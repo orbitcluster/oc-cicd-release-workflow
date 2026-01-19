@@ -90,6 +90,36 @@ To trigger a **Major** release (e.g., `1.0.0` -> `2.0.0`), use a `!` after the t
 
 How do these files interact?
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant Main as main.yml<br>(Workflow)
+    participant Action as action.yml<br>(Composite Action)
+    participant Script as semantic-version.sh<br>(Script)
+    participant SR as semantic-release<br>(Tool)
+
+    User->>Main: Push / PR (Trigger)
+    Main->>Action: Call uses: ./
+    Note right of Main: Passes: github-token, dry-run
+
+    Action->>Script: Run script
+    Note right of Action: Args: -d (if dry-run), -c
+
+    Script->>Script: Check Flags & Branch
+
+    alt Dry Run
+        Script->>Script: git checkout -B branch
+        Script->>SR: npx semantic-release --dry-run
+    else Release
+        Script->>SR: npx semantic-release
+    end
+
+    SR->>Script: Return new version
+    Script->>Action: Set GITHUB_OUTPUT
+    Action->>Main: Map to steps output
+    Main->>Main: Use version (Tag, Deploy, etc.)
+```
+
 1.  **Trigger**: A developer pushes code or opens a PR.
     *   -> `main.yml` starts.
 
