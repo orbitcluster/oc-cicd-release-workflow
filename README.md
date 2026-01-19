@@ -54,11 +54,35 @@ This is the CI workflow for *this repository itself*.
 
 #### 4. `semantic-version.sh` (The Script)
 A Bash script that orchestrates `semantic-release`.
-
 *   **Responsibility**:
     *   Dynamic Configuration: Switches flags based on `dry-run` status.
     *   Branch Detection: Handles `detached HEAD` state during dry-runs by explicitly checking out the branch.
     *   Output Management: Writes results to `GITHUB_OUTPUT`.
+
+## 📝 Conventional Commits & Versioning
+
+This workflow uses the **Conventional Commits** standard to determine the next version number.
+
+| Commit Type | Description | Release Type | Example |
+| :--- | :--- | :--- | :--- |
+| **`feat`** | A new feature | **Minor** (`1.1.0` -> `1.2.0`) | `feat: add new search api` |
+| **`fix`** | A bug fix | **Patch** (`1.1.0` -> `1.1.1`) | `fix: null pointer exception` |
+| **`perf`** | Performance improvement | **Patch** | `perf: optimize query` |
+| **`chore`** | Maintenance/Cleanup | **Patch** | `chore: update dependencies` |
+| **`refactor`** | Code restructuring | **Patch** | `refactor: extract method` |
+| **`revert`** | Reverting a commit | **Patch** | `revert: undo recent change` |
+| **`style`** | Formatting (white-space, etc) | **No Release** | `style: fix indentation` |
+| **`docs`** | Documentation changes | **No Release** | `docs: update readme` |
+| **`test`** | Adding tests | **No Release** | `test: add unit tests` |
+| **`ci`** | CI config changes | **No Release** | `ci: update workflow` |
+| **`build`** | Build system changes | **No Release** | `build: update npm scripts` |
+
+### 💥 Breaking Changes (Major)
+
+To trigger a **Major** release (e.g., `1.0.0` -> `2.0.0`), use a `!` after the type or include `BREAKING CHANGE:` in the footer.
+
+*   `feat!: remove deprecated api`
+*   Footer key: `BREAKING CHANGE: API endpoint /v1/auth is removed.`
 
 ---
 
