@@ -146,11 +146,55 @@ sequenceDiagram
 
 ## 📦 Usage for Other Repos
 
-To use this workflow in another repository:
+There are two methods to consume this release workflow.
+
+### Option 1: Reusable Workflow (Recommended)
+This method isolates the release logic in a separate job.
+
+```mermaid
+sequenceDiagram
+    participant OtherRepo as Other Repo<br>(CI Workflow)
+    participant Version as version.yml<br>(Reusable Workflow)
+    participant Action as action.yml<br>(Core Action)
+
+    OtherRepo->>Version: Call uses: .../version.yml@v1
+    Note right of OtherRepo: permissions: write-all
+
+    Version->>Action: Call uses: ./
+    Action->>Version: Return outputs (release-version, etc)
+    Version->>OtherRepo: Forward outputs
+
+    OtherRepo->>OtherRepo: Use ${{ needs.release.outputs.release-version }}
+```
 
 ```yaml
 jobs:
   release:
     uses: orbitcluster/oc-cicd-release-workflow/.github/workflows/version.yml@v1
     secrets: inherit
+```
+
+### Option 2: Direct Action Usage
+Use this if you need to run the release logic as a step within your own job (e.g., for tighter integration).
+
+```mermaid
+sequenceDiagram
+    participant OtherRepo as Other Repo<br>(CI Job)
+    participant Action as action.yml<br>(Composite Action)
+
+    Note right of OtherRepo: Step: orbitcluster/oc-cicd-release-workflow@v1
+    OtherRepo->>Action: Call uses: ...@v1
+    Note right of OtherRepo: with: github-token, dry-run
+
+    Action->>OtherRepo: Return outputs to steps context
+
+    OtherRepo->>OtherRepo: Use ${{ steps.release.outputs.release-version }}
+```
+
+```yaml
+steps:
+  - id: release
+    uses: orbitcluster/oc-cicd-release-workflow@v1
+    with:
+      github-token: ${{ github.token }}
 ```
