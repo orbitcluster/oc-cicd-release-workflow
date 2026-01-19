@@ -1,0 +1,31 @@
+---
+on:
+    workflow_call:
+        outputs:
+            release-version:
+                description: "The new release version"
+                value: ${{ jobs.semver.outputs.release-version }}
+            last-version:
+                description: "The previous version"
+                value: ${{ jobs.semver.outputs.last-version }}
+            is-new-release:
+                description: "Whether a new release was created"
+                value: ${{ jobs.semver.outputs.is-new-release }}
+
+jobs:
+    semver:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
+        outputs:
+            release-version: ${{ steps.rel.outputs.release-version }}
+            last-version: ${{ steps.rel.outputs.last-version }}
+            is-new-release: ${{ steps.rel.outputs.is-new-release }}
+        steps:
+            - id: rel
+              uses: orbitcluster/oc-cicd-release-workflow@v1
+              with:
+                  dry-run: ${{ github.ref_name != 'main' }}
+                  github-token: ${{ github.token }}

@@ -1,0 +1,120 @@
+---
+description: >
+  Whenever changes are committed to the default branch, this action
+  bumps the version number of the repository and creates a new release.
+
+inputs:
+  create-component-tags:
+    default: "true"
+    description: >
+      Create Git tags with version components. For example, if the version is
+      1.2.3, it will create tags 1.2.3, 1.2, and 1.
+  dry-run:
+    default: "false"
+    required: false
+    description: >
+      If true, the action will not create any tags or releases.
+  fail-on-no-release:
+    default: "false"
+    required: false
+    description: >
+      If true, the action will fail if no release is created.
+  github-token:
+    required: true
+    description: >
+      The GitHub token to use for authentication.
+
+name: Semantic version
+
+outputs:
+  release-version:
+    description: The new version number.
+    value: ${{ steps.release.outputs.version }}
+  last-version:
+    description: The previous version number.
+    value: ${{ steps.release.outputs.last-version }}
+  is-new-release:
+    description: Whether a new release was created.
+    value: ${{ steps.release.outputs.is-new-release }}
+
+runs:
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.github-token }}" ]; then
+          echo "Error: github-token is required."
+          exit 1
+        fi
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Remove package.json files
+      shell: bash
+      run: |
+        find . -type f -name package.json | xargs rm -f
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+
+    - id: release
+      name: Release
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      shell: bash
+      run: |
+        if [[ -n "$ARTIFACTORY_USER" && -n "$ARTIFACTORY_TOKEN" ]]; then
+          export ARTIFACTORY_TOKEN_BASE64=$(echo -n \
+            "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" | base64 -w0)
+        fi
+
+        $GITHUB_ACTION_PATH/semantic-version.sh \
+          ${{ inputs.dry-run == 'false' && ' ' || '-d' }} \
+          ${{ inputs.create-component-tags == 'true' && '-c' || '' }}
+
+    - id: validate
+      name: Validate pre-release PR semantic notation
+      if: github.event_name == 'pull_request'
+      shell: bash
+      env:
+        RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        IS_NEW_RELEASE: ${{ steps.release.outputs.is-new-release }}
+        RELEASE_PR_REGEX: >-
+          ^(chore|fix|feat|perf|refactor|chore|release){1}(\(.*\))?(!)?:.*
+        NON_RELEASE_PR_REGEX: >-
+          ^(docs|style|test|build|ci|workflow){1}(\(.*\))?(!)?:.*
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        FAIL_ON_NO_RELEASE: ${{ inputs.fail-on-no-release }}
+      run: |
+        if [[ ! "${PR_TITLE}" =~ ${RELEASE_PR_REGEX} ]] && \
+           [[ ! "$PR_TITLE" =~ ${NON_RELEASE_PR_REGEX} ]]; then
+          echo -e "\033[0;31mPR title must follow conventional commit syntax."
+          echo -e "\033[0;31mPrefixes: feat: fix: chore: etc."
+          echo -e "\033[0;31mSee: https://conventionalcommits.org/"
+          exit 1
+        fi
+
+        if [[ "$PR_TITLE" =~ $RELEASE_PR_REGEX ]]; then
+          TITLE_MARKS_NEW_RELEASE=true
+        elif [[ "$PR_TITLE" =~ $NON_RELEASE_PR_REGEX ]]; then
+          TITLE_MARKS_NEW_RELEASE=false
+        fi
+
+        if [[ "${TITLE_MARKS_NEW_RELEASE}" != $IS_NEW_RELEASE ]]; then
+          echo -e "\033[0;31mPR title vs commit mismatch for release."
+          exit 1
+        fi
+
+        if [[ "${FAIL_ON_NO_RELEASE}" == "true" && \
+              "${IS_NEW_RELEASE}" == "false" ]]; then
+          echo -e "\033[0;31mNo release created (fail-on-no-release=true)."
+          echo -e "\033[0;31mEnsure commit message prefixes trigger release."
+          exit 1
+        fi
+
+  using: composite

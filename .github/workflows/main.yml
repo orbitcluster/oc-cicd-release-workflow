@@ -1,0 +1,64 @@
+---
+name: main
+
+on:
+    pull_request:
+        branches:
+            - main
+    push:
+        branches:
+            - main
+
+jobs:
+    pre-commit:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pre-commit/action@v3.0.1
+
+    semantic-version:
+        needs: pre-commit
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            issues: write
+            pull-requests: write
+        outputs:
+            release-version: ${{ steps.semver.outputs.release-version }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - id: semver
+              name: Semantic Version
+              uses: ./
+              with:
+                  dry-run: ${{ github.ref_name != 'main' }}
+                  github-token: ${{ github.token }}
+
+    check-workflow-sync:
+        needs: semantic-version
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Check workflow version
+              env:
+                  VERSION: ${{ needs.semantic-version.outputs.release-version }}
+              run: |
+                MAJOR="${VERSION%%.*}"
+                ACTION="orbitcluster/oc-cicd-release-workflow"
+                WF_FILE=".github/workflows/version.yml"
+                WF_VERSION="$(grep "${ACTION}" "${WF_FILE}" | sed 's/.*@//')"
+
+                if [[ "$WF_VERSION" != "v${MAJOR}" ]]; then
+                  echo "Action version in workflow does not match version to be"
+                  echo "released."
+                  echo ""
+                  echo "Changes would release major version '$MAJOR'."
+                  echo "Workflow has version '$WF_VERSION'."
+
+                  exit 1
+                else
+                  echo "Workflow version '$WF_VERSION' matches" \
+                       "version to be released."
+                  echo "version '${MAJOR}'."
+                fi
