@@ -68,7 +68,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       shell: bash
       run: |
-        if [[ -n "$ARTIFACTORY_USER" && -n "$ARTIFACTORY_TOKEN"]]; then
+        if [[ -n "$ARTIFACTORY_USER" && -n "$ARTIFACTORY_TOKEN" ]]; then
           export ARTIFACTORY_TOKEN_BASE64=$(echo -n \
             "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" | base64 -w0)
         fi
