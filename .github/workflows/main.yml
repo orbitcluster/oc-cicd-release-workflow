@@ -2,6 +2,7 @@
 name: main
 
 on:
+
     pull_request:
         branches:
             - main
@@ -44,6 +45,11 @@ jobs:
               env:
                   VERSION: ${{ needs.semantic-version.outputs.release-version }}
               run: |
+                if [[ -z "$VERSION" ]]; then
+                  echo "No release version calculated. Skipping sync check."
+                  exit 0
+                fi
+
                 MAJOR="${VERSION%%.*}"
                 ACTION="orbitcluster/oc-cicd-release-workflow"
                 WF_FILE=".github/workflows/version.yml"
