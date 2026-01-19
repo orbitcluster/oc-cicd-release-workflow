@@ -52,6 +52,15 @@ if [[ "$DRY_RUN" == "true" ]]; then
   else
     BRANCH="$GITHUB_REF_NAME"
   fi
+
+  # actions/checkout leaves HEAD detached.
+  # When unsetting GITHUB_ACTIONS, semantic-release relies on git to find the branch.
+  # We must attach HEAD to the branch name.
+  if [[ -n "$BRANCH" ]]; then
+    echo "Ensuring we are on branch: $BRANCH"
+    git checkout -B "$BRANCH"
+  fi
+
   CMD="$CMD --dry-run --no-ci --branches $BRANCH"
   CMD="$CMD --extends $GITHUB_ACTION_PATH/release.config.js"
   CMD="$CMD --repository-url https://github.com/$GITHUB_REPOSITORY"
