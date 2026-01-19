@@ -148,7 +148,32 @@ sequenceDiagram
 
 There are two methods to consume this release workflow.
 
-### Option 1: Reusable Workflow (Recommended)
+### Option 1: Direct Action Usage (Recommended)
+Use this if you need to run the release logic as a step within your own job (e.g., for tighter integration).
+
+```mermaid
+sequenceDiagram
+    participant OtherRepo as Other Repo<br>(CI Job)
+    participant Action as action.yml<br>(Composite Action)
+
+    Note right of OtherRepo: Step: orbitcluster/oc-cicd-release-workflow@v1
+    OtherRepo->>Action: Call uses: ...@v1
+    Note right of OtherRepo: with: github-token, dry-run
+
+    Action->>OtherRepo: Return outputs to steps context
+
+    OtherRepo->>OtherRepo: Use ${{ steps.release.outputs.release-version }}
+```
+
+```yaml
+steps:
+  - id: release
+    uses: orbitcluster/oc-cicd-release-workflow@v1
+    with:
+      github-token: ${{ github.token }}
+```
+
+### Option 2: Reusable Workflow
 This method isolates the release logic in a separate job.
 
 ```mermaid
@@ -172,29 +197,4 @@ jobs:
   release:
     uses: orbitcluster/oc-cicd-release-workflow/.github/workflows/version.yml@v1
     secrets: inherit
-```
-
-### Option 2: Direct Action Usage
-Use this if you need to run the release logic as a step within your own job (e.g., for tighter integration).
-
-```mermaid
-sequenceDiagram
-    participant OtherRepo as Other Repo<br>(CI Job)
-    participant Action as action.yml<br>(Composite Action)
-
-    Note right of OtherRepo: Step: orbitcluster/oc-cicd-release-workflow@v1
-    OtherRepo->>Action: Call uses: ...@v1
-    Note right of OtherRepo: with: github-token, dry-run
-
-    Action->>OtherRepo: Return outputs to steps context
-
-    OtherRepo->>OtherRepo: Use ${{ steps.release.outputs.release-version }}
-```
-
-```yaml
-steps:
-  - id: release
-    uses: orbitcluster/oc-cicd-release-workflow@v1
-    with:
-      github-token: ${{ github.token }}
 ```
